@@ -4,341 +4,507 @@ import pandas as pd
 import os
 import joblib
 
-# ==============================================================================
-# CẤU HÌNH TRANG WEB
-# ==============================================================================
+# ─────────────────────────────────────────────
+# PAGE CONFIG
+# ─────────────────────────────────────────────
 st.set_page_config(
     page_title="CNC Condition Monitoring",
     page_icon="⚙️",
-    layout="centered"
+    layout="wide",
 )
 
-# Tùy chỉnh CSS để giao diện giống 100% hình ảnh thực tế của đề tài
+# ─────────────────────────────────────────────
+# GLOBAL CSS  (tất cả class name dùng tĩnh)
+# ─────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
-    .metric-card {
-        background: #ffffff;
-        border: 1px solid #eef2f6;
-        border-radius: 14px;
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-    }
-    .badge-danger {
-        background-color: #fee2e2;
-        color: #ef4444;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-size: 13px;
-    }
-    .badge-warning {
-        background-color: #fef3c7;
-        color: #f59e0b;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-size: 13px;
-    }
-    .badge-success {
-        background-color: #dcfce7;
-        color: #10b981;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-size: 13px;
-    }
-    .progress-track {
-        background-color: #e2e8f0;
-        border-radius: 9999px;
-        height: 8px;
-        width: 100%;
-        overflow: hidden;
-        margin-top: 6px;
-        margin-bottom: 16px;
-    }
-    .progress-fill-red { background-color: #ef4444; height: 100%; border-radius: 9999px; }
-    .progress-fill-yellow { background-color: #f59e0b; height: 100%; border-radius: 9999px; }
-    .progress-fill-green { background-color: #10b981; height: 100%; border-radius: 9999px; }
-    .param-title {
-        display: flex;
-        justify-content: space-between;
-        font-size: 14px;
-        font-weight: 600;
-        color: #1e293b;
-    }
-    .param-desc {
-        font-size: 12px;
-        color: #64748b;
-        margin-top: -10px;
-        margin-bottom: 12px;
-    }
+/* ── Typography & Base ── */
+html, body, [class*="css"] {
+    font-family: "Inter", "Segoe UI", sans-serif !important;
+}
+
+/* ── Sidebar polish ── */
+section[data-testid="stSidebar"] {
+    background: #0f172a !important;
+}
+section[data-testid="stSidebar"] * {
+    color: #e2e8f0 !important;
+}
+section[data-testid="stSidebar"] .stSelectbox label,
+section[data-testid="stSidebar"] .stNumberInput label,
+section[data-testid="stSidebar"] .stTextInput label,
+section[data-testid="stSidebar"] .stRadio label {
+    color: #94a3b8 !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+section[data-testid="stSidebar"] input {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+section[data-testid="stSidebar"] .stRadio > label {
+    text-transform: none !important;
+    font-size: 13px !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: #334155 !important;
+    margin: 16px 0 !important;
+}
+
+/* ── Main area ── */
+.block-container {
+    padding-top: 1.5rem !important;
+    max-width: 900px !important;
+}
+
+/* ── Shared card ── */
+.cnc-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.cnc-card-dark {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+}
+
+/* ── Badges ── */
+.badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 14px;
+    border-radius: 9999px;
+    letter-spacing: .03em;
+}
+.badge-green  { background:#dcfce7; color:#15803d; }
+.badge-yellow { background:#fef3c7; color:#b45309; }
+.badge-red    { background:#fee2e2; color:#dc2626; }
+
+/* ── Progress bar (static inline) ── */
+.pbar-wrap {
+    background: #e2e8f0;
+    border-radius: 9999px;
+    height: 8px;
+    overflow: hidden;
+    margin: 6px 0 4px;
+}
+.pbar-green  { background:#10b981; height:100%; border-radius:9999px; }
+.pbar-yellow { background:#f59e0b; height:100%; border-radius:9999px; }
+.pbar-red    { background:#ef4444; height:100%; border-radius:9999px; }
+
+/* ── Parameter rows ── */
+.param-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2px;
+}
+.param-name  { font-size:14px; font-weight:600; color:#1e293b; }
+.param-value { font-size:14px; font-weight:700; color:#0f172a; }
+.param-desc  { font-size:12px; color:#64748b; margin-bottom:14px; }
+
+/* ── Risk score big number ── */
+.risk-number { font-size:52px; font-weight:800; line-height:1; }
+.risk-green  { color:#15803d; }
+.risk-yellow { color:#b45309; }
+.risk-red    { color:#dc2626; }
+
+/* ── Metric KPI boxes ── */
+.kpi-row { display:flex; gap:12px; margin-bottom:20px; }
+.kpi-box {
+    flex:1;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    padding:14px 16px;
+    text-align:center;
+}
+.kpi-label { font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+.kpi-value { font-size:20px; font-weight:800; color:#0f172a; margin-top:4px; }
+
+/* ── Feature rows (Explainability) ── */
+.feat-row {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 0;
+    border-bottom:1px solid #f1f5f9;
+}
+.feat-name  { font-size:13px; color:#334155; }
+.feat-val   { font-size:13px; font-weight:700; color:#0f172a; }
+.feat-tag-red    { font-size:11px; color:#dc2626; font-weight:600; }
+.feat-tag-yellow { font-size:11px; color:#b45309; font-weight:600; }
+.feat-tag-gray   { font-size:11px; color:#94a3b8; }
+
+/* ── Recommendation box ── */
+.rec-box {
+    background:#f0fdf4;
+    border:1px solid #bbf7d0;
+    border-radius:10px;
+    padding:14px 18px;
+    margin-top:20px;
+}
+.rec-box-warn {
+    background:#fffbeb;
+    border:1px solid #fde68a;
+    border-radius:10px;
+    padding:14px 18px;
+    margin-top:20px;
+}
+.rec-box-danger {
+    background:#fff1f2;
+    border:1px solid #fecdd3;
+    border-radius:10px;
+    padding:14px 18px;
+    margin-top:20px;
+}
+.rec-title  { font-size:13px; font-weight:700; color:#0f172a; margin-bottom:6px; }
+.rec-body   { font-size:13px; color:#334155; line-height:1.6; }
+.rec-note   { font-size:11px; color:#94a3b8; margin-top:6px; }
+
+/* ── Section headers ── */
+.section-header {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin: 24px 0 12px;
+}
+
+/* ── Divider ── */
+.divider { border:none; border-top:1px solid #e2e8f0; margin:24px 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# ==============================================================================
-# HÀM DỰ ĐOÁN & CHUẨN BỊ MÔ HÌNH (DỰA TRÊN 05_MODEL_TRAINING.IPYNB)
-# ==============================================================================
+
+# ─────────────────────────────────────────────
+# MODEL LOADING
+# ─────────────────────────────────────────────
 MODEL_FILE = "best_model.joblib"
-BEST_THRESHOLD = 0.20  # Ngưỡng tối ưu đã chọn trong Notebook
+BEST_THRESHOLD = 0.20
 
 @st.cache_resource
-def load_trained_model():
-    """Load model từ file joblib nếu có, hoặc trả về None"""
+def load_model():
     if os.path.exists(MODEL_FILE):
         try:
-            pkg = joblib.load(MODEL_FILE)
-            return pkg
+            return joblib.load(MODEL_FILE)
         except Exception:
             return None
     return None
 
-model_package = load_trained_model()
+model_package = load_model()
 
-def calculate_failure_risk(features_dict):
-    """
-    Tính xác suất hư hỏng dựa trên Pipeline Random Forest (GĐ7).
-    Nếu chưa upload file best_model.joblib, hàm sử dụng mô hình nội suy chính xác
-    dựa trên các trọng số và quy luật vật lý của Random Forest trong dataset.
-    """
-    df_sample = pd.DataFrame([features_dict])
-    
-    # 1. Nếu có model.joblib được train từ 05_Model_Training.ipynb:
-    if model_package is not None and "pipeline" in model_package:
-        model = model_package["pipeline"]
-        prob = model.predict_proba(df_sample)[0, 1]
-        threshold = model_package.get("threshold", BEST_THRESHOLD)
-        return prob, threshold
-    
-    # 2. Dự phòng thông minh: Tính điểm rủi ro vật lý chính xác theo quy luật máy CNC
-    # (Torque, Tool wear, temp_diff, power)
-    torque = features_dict["Torque [Nm]"]
-    wear = features_dict["Tool wear [min]"]
-    temp_diff = features_dict["temp_diff"]
-    power = features_dict["power"]
-    
-    # Tính toán các nguy cơ thành phần
-    torque_risk = max(0.0, (torque - 50.0) / 25.0) if torque > 50 else 0.0
-    wear_risk = max(0.0, (wear - 180.0) / 60.0) if wear > 180 else 0.0
-    heat_risk = 0.5 if (temp_diff < 8.6 and features_dict["Rotational speed [rpm]"] <= 1380) else 0.0
-    power_risk = 0.6 if (power < 35000 or power > 90000) else 0.0
-    overstrain_risk = max(0.0, (wear * torque - 11000) / 4000.0) if (wear * torque > 11000) else 0.0
-    
-    base_score = 0.03
-    combined = base_score + 0.35 * torque_risk + 0.35 * wear_risk + 0.2 * overstrain_risk + 0.1 * heat_risk + 0.1 * power_risk
-    prob = float(np.clip(combined, 0.02, 0.98))
-    
-    return prob, BEST_THRESHOLD
 
-# ==============================================================================
-# GIAO DIỆN THANH BÊN (SIDEBAR) - NHẬP THÔNG SỐ VẬN HÀNH
-# ==============================================================================
-st.sidebar.markdown("### ⚙️ Thông số vận hành CNC")
-st.sidebar.caption("Dữ liệu cảm biến thời gian thực của máy phay")
+def predict_risk(feat: dict):
+    """Return (probability 0-1, threshold 0-1)"""
+    df = pd.DataFrame([feat])
+    if model_package and "pipeline" in model_package:
+        p = model_package["pipeline"].predict_proba(df)[0, 1]
+        t = model_package.get("threshold", BEST_THRESHOLD)
+        return float(p), float(t)
 
-# Nút tải dữ liệu mẫu giống ảnh của người dùng
-demo_preset = st.sidebar.radio(
-    "Tải cấu hình mẫu:",
-    ["Tùy chỉnh", "Mẫu CNC-002 (Báo động rủi ro 82%)", "Mẫu CNC-001 (Bình thường an toàn)"],
-    index=1
-)
+    # Physics-based fallback (calibrated to notebook results)
+    torque = feat["Torque [Nm]"]
+    wear   = feat["Tool wear [min]"]
+    tdiff  = feat["temp_diff"]
+    rpm    = feat["Rotational speed [rpm]"]
 
-if demo_preset == "Mẫu CNC-002 (Báo động rủi ro 82%)":
-    default_id = "CNC-002"
-    default_type = "L"
-    default_air = 300.0
-    default_proc = 315.0
-    default_speed = 1500
-    default_torque = 65.0
-    default_wear = 210
-elif demo_preset == "Mẫu CNC-001 (Bình thường an toàn)":
-    default_id = "CNC-001"
-    default_type = "M"
-    default_air = 298.0
-    default_proc = 308.0
-    default_speed = 1550
-    default_torque = 38.0
-    default_wear = 45
-else:
-    default_id = "CNC-003"
-    default_type = "L"
-    default_air = 300.0
-    default_proc = 310.0
-    default_speed = 1500
-    default_torque = 40.0
-    default_wear = 100
+    torque_r    = max(0.0, (torque - 50) / 25) if torque > 50 else 0.0
+    wear_r      = max(0.0, (wear - 180) / 60)  if wear > 180 else 0.0
+    heat_r      = 0.4 if (tdiff < 8.6 and rpm <= 1380) else 0.0
+    overstrain_r = max(0.0, (wear * torque - 11000) / 4000) if wear * torque > 11000 else 0.0
 
-machine_id = st.sidebar.text_input("Mã định danh máy", value=default_id)
-machine_type = st.sidebar.selectbox("Loại phôi (Type: L/M/H)", ["L", "M", "H"], index=["L", "M", "H"].index(default_type))
-air_temp = st.sidebar.number_input("Nhiệt độ môi trường [K]", value=float(default_air), step=0.5)
-proc_temp = st.sidebar.number_input("Nhiệt độ quá trình [K]", value=float(default_proc), step=0.5)
-speed_rpm = st.sidebar.number_input("Tốc độ trục chính [rpm]", value=int(default_speed), step=50)
-torque_nm = st.sidebar.number_input("Mô-men xoắn [Nm]", value=float(default_torque), step=1.0)
-tool_wear = st.sidebar.number_input("Thời gian mòn dao [phút]", value=int(default_wear), step=5)
+    p = np.clip(0.03 + 0.35 * torque_r + 0.35 * wear_r + 0.2 * overstrain_r + 0.1 * heat_r, 0.02, 0.97)
+    return float(p), BEST_THRESHOLD
 
-# Tính các biến Feature Engineering tương thích với 05_Model_Training.ipynb
+
+# ─────────────────────────────────────────────
+# SIDEBAR  ─  Input Panel
+# ─────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("## ⚙️ CNC Monitor")
+    st.markdown("<div style='color:#475569;font-size:12px;margin-bottom:16px;'>Nhập thông số cảm biến vận hành</div>", unsafe_allow_html=True)
+
+    preset = st.radio(
+        "Kịch bản nhanh",
+        ["🔴  Báo động (CNC-002)", "🟢  Bình thường (CNC-001)", "✏️  Tùy chỉnh"],
+        index=0,
+    )
+    st.markdown("<hr/>", unsafe_allow_html=True)
+
+    if "Báo động" in preset:
+        v = dict(id="CNC-002", tp="L", air=300.0, proc=315.0, rpm=1500, torque=65.0, wear=210)
+    elif "Bình thường" in preset:
+        v = dict(id="CNC-001", tp="M", air=298.0, proc=308.0, rpm=1550, torque=38.0, wear=45)
+    else:
+        v = dict(id="CNC-003", tp="L", air=300.0, proc=310.0, rpm=1500, torque=40.0, wear=100)
+
+    machine_id   = st.text_input("Mã máy",                     value=v["id"])
+    machine_type = st.selectbox("Loại phôi",                   ["L", "M", "H"],
+                                index=["L","M","H"].index(v["tp"]))
+    air_temp     = st.slider("Nhiệt độ môi trường [K]",        295.0, 305.0, v["air"],  0.5)
+    proc_temp    = st.slider("Nhiệt độ quá trình [K]",         305.0, 325.0, v["proc"], 0.5)
+    speed_rpm    = st.slider("Tốc độ trục chính [rpm]",        1100,  2900,  v["rpm"],  10)
+    torque_nm    = st.slider("Mô-men xoắn [Nm]",               3.0,   77.0,  v["torque"], 0.5)
+    tool_wear    = st.slider("Thời gian mòn dao [phút]",       0,     253,   v["wear"], 1)
+
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    model_status = "✅ Model thật đã nạp" if model_package else "⚠️ Chế độ mô phỏng"
+    st.caption(model_status)
+    st.caption("Dataset: AI4I 2020 Predictive Maintenance")
+
+
+# ─────────────────────────────────────────────
+# FEATURE ENGINEERING
+# ─────────────────────────────────────────────
 temp_diff = proc_temp - air_temp
-power = speed_rpm * torque_nm
-power_kw = (power * 2 * np.pi / 60) / 1000.0
+power_raw = speed_rpm * torque_nm
+power_kw  = (power_raw * 2 * np.pi / 60) / 1000.0
+overstrain = tool_wear * torque_nm
 
-features = {
-    "Type": machine_type,
-    "Air temperature [K]": air_temp,
-    "Process temperature [K]": proc_temp,
-    "Rotational speed [rpm]": speed_rpm,
-    "Torque [Nm]": torque_nm,
-    "Tool wear [min]": tool_wear,
-    "temp_diff": temp_diff,
-    "power": power
+feat = {
+    "Type":                      machine_type,
+    "Air temperature [K]":       air_temp,
+    "Process temperature [K]":   proc_temp,
+    "Rotational speed [rpm]":    speed_rpm,
+    "Torque [Nm]":               torque_nm,
+    "Tool wear [min]":           tool_wear,
+    "temp_diff":                 temp_diff,
+    "power":                     power_raw,
 }
 
-# ==============================================================================
-# THỰC HIỆN DỰ BÁO & PHÂN TÍCH RỦI RO (GĐ7, GĐ8, GĐ9, GĐ10)
-# ==============================================================================
-prob, threshold = calculate_failure_risk(features)
-prob_percent = int(round(prob * 100))
+prob, threshold = predict_risk(feat)
+pct = int(round(prob * 100))
 
-# GĐ8: Risk Level Design (Phân cấp cảnh báo nguy cơ)
+
+# ─────────────────────────────────────────────
+# RISK LEVEL (GĐ8)
+# ─────────────────────────────────────────────
 if prob >= 0.70:
-    badge_label = "Báo động"
-    badge_class = "badge-danger"
-    level_color = "red"
-    action_status = "Cần kiểm tra ngay"
-elif prob >= threshold:  # Ngưỡng 0.20 theo Model Training
-    badge_label = "Cần kiểm tra"
-    badge_class = "badge-warning"
-    level_color = "yellow"
-    action_status = "Cảnh báo"
+    lvl = "danger";  badge_text = "Báo động";      lvl_text = "Dừng máy, kiểm tra ngay"
+    badge_cls = "badge-red";  bar_cls = "pbar-red";    num_cls = "risk-red"
+elif prob >= threshold:
+    lvl = "warning"; badge_text = "Cần kiểm tra";  lvl_text = "Theo dõi chặt ca này"
+    badge_cls = "badge-yellow"; bar_cls = "pbar-yellow"; num_cls = "risk-yellow"
 else:
-    badge_label = "Bình thường"
-    badge_class = "badge-success"
-    level_color = "green"
-    action_status = "Trong vùng tham chiếu"
+    lvl = "normal";  badge_text = "Bình thường";   lvl_text = "Vận hành ổn định"
+    badge_cls = "badge-green";  bar_cls = "pbar-green";  num_cls = "risk-green"
 
-# ==============================================================================
-# HIỂN THỊ GIAO DIỆN CHÍNH (ĐÚNG NHƯ CÁC ẢNH MẪU ĐÍNH KÈM)
-# ==============================================================================
-st.markdown("## 📈 CNC Condition Monitoring")
-st.caption("Giao diện minh họa theo ý tưởng đề tài dự đoán tình trạng hư hỏng máy phay CNC")
+# ─────────────────────────────────────────────
+# RECOMMENDATION (GĐ10)
+# ─────────────────────────────────────────────
+if lvl == "danger":
+    rec_cls = "rec-box-danger"
+    rec_icon = "🚨"
+    rec_title = "Hành động khẩn: Dừng máy và kiểm tra"
+    rec_items = []
+    if torque_nm > 55:
+        rec_items.append("• Giảm bước tiến dao hoặc chiều sâu cắt để hạ Torque xuống dưới 55 Nm.")
+    if tool_wear > 180:
+        rec_items.append("• Thay dao phay mới ngay — thời gian mòn tích lũy vượt ngưỡng an toàn.")
+    if temp_diff < 8.6:
+        rec_items.append("• Kiểm tra bơm và áp suất dung dịch tưới nguội (coolant).")
+    if not rec_items:
+        rec_items.append("• Kiểm tra toàn diện các cụm cơ khí trước khi khởi động lại.")
+    rec_body = "\n".join(rec_items)
+elif lvl == "warning":
+    rec_cls = "rec-box-warn"
+    rec_icon = "⚠️"
+    rec_title = "Khuyến nghị: Theo dõi và chuẩn bị bảo dưỡng"
+    rec_body = (
+        "• Lên kế hoạch thay dao trong ca tới nếu Tool wear tiếp tục tăng.\n"
+        "• Ghi nhận biến thiên Torque theo thời gian.\n"
+        "• Đảm bảo nhiệt độ coolant và lưu lượng tưới nguội đủ tiêu chuẩn."
+    )
+else:
+    rec_cls = "rec-box"
+    rec_icon = "✅"
+    rec_title = "Máy đang vận hành ổn định"
+    rec_body = (
+        "• Tiếp tục kế hoạch bảo dưỡng định kỳ theo lịch.\n"
+        "• Ghi nhận chỉ số Tool wear hàng ca để phát hiện xu hướng sớm."
+    )
 
-# CARD 1: TÌNH TRẠNG TỔNG THỂ & KẾT QUẢ KIỂM TRA (GIỐNG ẢNH 3 & 4)
+# ─────────────────────────────────────────────
+# RENDER MAIN CONTENT
+# ─────────────────────────────────────────────
+
+# ── Header ──────────────────────────────────
+col_title, col_badge = st.columns([3, 1])
+with col_title:
+    st.markdown(f"### Kết quả kiểm tra  `{machine_id}`")
+    st.caption("Hệ thống dự báo tình trạng hư hỏng máy phay CNC  ·  AI4I 2020 Dataset")
+with col_badge:
+    st.markdown(f"""
+    <div style="text-align:right;padding-top:12px;">
+        <span class="badge {badge_cls}">{badge_text}</span>
+    </div>""", unsafe_allow_html=True)
+
+
+# ── Risk Score + Progress (GĐ8) ─────────────
 st.markdown(f"""
-<div class="metric-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <span style="font-size: 18px; font-weight: 700; color: #0f172a;">Kết quả kiểm tra {machine_id}</span>
-        <span class="{badge_class}">{badge_label}</span>
-    </div>
-    
-    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
-        <span style="font-size: 32px; font-weight: 800; color: #0f172a;">{prob_percent}%</span>
-        <span style="font-size: 14px; font-weight: 600; color: #475569;">Điểm nguy cơ dự đoán</span>
-        <span style="margin-left: auto; font-size: 14px; color: #64748b;">Mức cảnh báo: <b>{action_status}</b></span>
-    </div>
-
-    <div class="progress-track">
-        <div class="progress-fill-{level_color}" style="width: {prob_percent}%;"></div>
-    </div>
-    
-    <div style="margin-top: 16px; margin-bottom: 12px;">
-        <span style="font-size: 13px; color: #64748b;">⚠️ <b>Những thông số dưới đây có thể cần ưu tiên xem xét:</b></span>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f8fafc;">
-        <span><b>Torque</b> — {torque_nm:.0f} Nm</span>
-        <span style="color: {'#ef4444' if torque_nm > 55 else '#64748b'}; font-size: 13px;">
-            {'Đóng góp tăng nguy cơ' if torque_nm > 55 else 'Trong khoảng an toàn'}
-        </span>
-    </div>
-    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f8fafc;">
-        <span><b>Tool wear</b> — {tool_wear} phút</span>
-        <span style="color: {'#ef4444' if tool_wear > 180 else '#64748b'}; font-size: 13px;">
-            {'Đóng góp tăng nguy cơ' if tool_wear > 180 else 'Bình thường'}
-        </span>
-    </div>
-    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f8fafc;">
-        <span><b>Nhiệt độ</b> — {proc_temp:.0f} K</span>
-        <span style="color: #64748b; font-size: 13px;">Hiển thị để đối chiếu</span>
-    </div>
-
-    <div style="margin-top: 18px; padding: 12px 16px; background-color: #f8fafc; border-radius: 8px;">
-        <b style="color: #0f172a; font-size: 14px;">Gợi ý (GĐ10 - Recommendation Engine):</b><br>
-        <span style="font-size: 13px; color: #334155;">
-            {
-                "Ưu tiên kiểm tra tải vận hành và tình trạng dụng cụ cắt. Xem xét thay dao mới trước khi tiến hành gia công."
-                if prob >= 0.5 else
-                "Theo dõi thêm biến thiên mô-men xoắn trong ca làm việc. Chưa cần dừng máy khẩn cấp."
-                if prob >= threshold else
-                "Thông số trong giới hạn cho phép. Tiếp tục vận hành bình thường."
-            }
-        </span>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Ví dụ minh họa dựa trên mô hình phân loại Random Forest (ngưỡng cắt tối ưu: 0.20).</div>
+<div class="cnc-card">
+    <div style="display:flex;align-items:center;gap:24px;">
+        <div>
+            <div class="section-header">Điểm nguy cơ hư hỏng</div>
+            <div class="risk-number {num_cls}">{pct}<span style="font-size:24px;font-weight:600;">%</span></div>
+            <div style="font-size:13px;color:#64748b;margin-top:4px;">Ngưỡng cảnh báo: <b>{int(threshold*100)}%</b> &nbsp;|&nbsp; Mức hiện tại: <b>{lvl_text}</b></div>
+        </div>
+        <div style="flex:1;">
+            <div class="pbar-wrap" style="height:14px;">
+                <div class="{bar_cls}" style="width:{pct}%;height:100%;border-radius:9999px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-top:4px;">
+                <span>0%</span>
+                <span>Ngưỡng {int(threshold*100)}%</span>
+                <span>Báo động 70%</span>
+                <span>100%</span>
+            </div>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# CARD 2: GĐ9 - PARAMETER ANALYSIS (GIỐNG ẢNH 4)
-st.markdown("### 📊 Phân tích chi tiết thông số vận hành (GĐ9)")
 
-# 1. Nhiệt độ quá trình
-proc_percent = int(min(100, max(0, (proc_temp - 295) / (325 - 295) * 100)))
-proc_status = "Cần kiểm tra" if proc_temp > 313 else "Bình thường"
-proc_color = "yellow" if proc_temp > 313 else "green"
+# ── KPI Row ─────────────────────────────────
+st.markdown('<div class="section-header">Thông số vận hành tổng quan</div>', unsafe_allow_html=True)
+k1, k2, k3, k4, k5 = st.columns(5)
+for col, label, value in [
+    (k1, "Nhiệt độ QT", f"{proc_temp:.0f} K"),
+    (k2, "Công suất",   f"{power_kw:.1f} kW"),
+    (k3, "Mòn dao",     f"{tool_wear} min"),
+    (k4, "Tốc độ",      f"{speed_rpm:,} rpm"),
+    (k5, "Torque",      f"{torque_nm:.0f} Nm"),
+]:
+    col.markdown(f"""
+    <div class="kpi-box">
+        <div class="kpi-label">{label}</div>
+        <div class="kpi-value">{value}</div>
+    </div>""", unsafe_allow_html=True)
 
-st.markdown(f"""
-<div class="param-title">
-    <span>Nhiệt độ quá trình</span>
-    <span>{proc_temp:.0f} K</span>
-</div>
-<div class="progress-track"><div class="progress-fill-{proc_color}" style="width: {proc_percent}%;"></div></div>
-<div class="param-desc">{proc_status}</div>
-""", unsafe_allow_html=True)
+st.markdown("")   # spacing
 
-# 2. Công suất cơ học
-power_percent = int(min(100, max(0, power_kw / 12.0 * 100)))
-power_status = "Cần theo dõi" if power_kw > 7.5 else "Trong vùng tham chiếu"
-power_color = "yellow" if power_kw > 7.5 else "green"
 
-st.markdown(f"""
-<div class="param-title">
-    <span>Công suất cơ học</span>
-    <span>{power_kw:.1f} kW</span>
-</div>
-<div class="progress-track"><div class="progress-fill-{power_color}" style="width: {power_percent}%;"></div></div>
-<div class="param-desc">{power_status}</div>
-""", unsafe_allow_html=True)
+# ── Parameter Analysis (GĐ9) ────────────────
+st.markdown('<div class="section-header">Phân tích chi tiết thông số vận hành (GĐ9 · Parameter Analysis)</div>', unsafe_allow_html=True)
 
-# 3. Độ hao mòn dụng cụ
-wear_percent = int(min(100, max(0, tool_wear / 240.0 * 100)))
-wear_status = "Mức cao (Cảnh báo)" if tool_wear > 180 else "Mức an toàn"
-wear_color = "red" if tool_wear > 180 else "green"
+# helper: build one param block purely with inline style (no dynamic class names)
+def param_block(label: str, value_str: str, pct_val: int,
+                bar_color: str, status: str, detail: str = ""):
+    """bar_color: hex string like #ef4444"""
+    return f"""
+<div style="margin-bottom:18px;">
+    <div class="param-row">
+        <span class="param-name">{label}</span>
+        <span class="param-value">{value_str}</span>
+    </div>
+    <div class="pbar-wrap">
+        <div style="width:{pct_val}%;height:100%;background:{bar_color};border-radius:9999px;"></div>
+    </div>
+    <div class="param-desc">{status}{(' — ' + detail) if detail else ''}</div>
+</div>"""
 
-st.markdown(f"""
-<div class="param-title">
-    <span>Độ hao mòn dụng cụ</span>
-    <span>{wear_status}</span>
-</div>
-<div class="progress-track"><div class="progress-fill-{wear_color}" style="width: {wear_percent}%;"></div></div>
-<div class="param-desc">Thời gian vận hành liên tục của dao phay: {tool_wear} phút (Ngưỡng mòn gãy: 200 - 240 phút)</div>
-""", unsafe_allow_html=True)
+proc_pct  = int(min(100, max(0, (proc_temp-295)/(325-295)*100)))
+power_pct = int(min(100, max(0, power_kw/12*100)))
+wear_pct  = int(min(100, max(0, tool_wear/253*100)))
+speed_pct = int(min(100, max(0, (speed_rpm-1100)/(2900-1100)*100)))
+torq_pct  = int(min(100, max(0, torque_nm/77*100)))
 
-# 4. Tốc độ quay
-speed_percent = int(min(100, max(0, speed_rpm / 2800.0 * 100)))
+proc_color  = "#ef4444" if proc_temp > 313 else "#f59e0b" if proc_temp > 310 else "#10b981"
+power_color = "#ef4444" if power_kw > 9 else "#f59e0b" if power_kw > 7.5 else "#10b981"
+wear_color  = "#ef4444" if tool_wear > 200 else "#f59e0b" if tool_wear > 150 else "#10b981"
+speed_color = "#10b981"
+torq_color  = "#ef4444" if torque_nm > 65 else "#f59e0b" if torque_nm > 50 else "#10b981"
+
+proc_status  = "Cần kiểm tra" if proc_temp > 313 else "Theo dõi" if proc_temp > 310 else "Bình thường"
+power_status = "Vượt ngưỡng" if power_kw > 9 else "Cần theo dõi" if power_kw > 7.5 else "Trong vùng tham chiếu"
+wear_status  = "Mức cao — cảnh báo" if tool_wear > 200 else "Cần chú ý" if tool_wear > 150 else "Mức an toàn"
 speed_status = "Trong vùng tham chiếu"
-speed_color = "green"
+torq_status  = "Vượt ngưỡng an toàn" if torque_nm > 65 else "Cần theo dõi" if torque_nm > 50 else "Bình thường"
 
+left_col, right_col = st.columns(2)
+with left_col:
+    st.markdown(param_block("🌡️  Nhiệt độ quá trình", f"{proc_temp:.1f} K", proc_pct,
+                             proc_color, proc_status, f"ΔT = {temp_diff:.1f} K"), unsafe_allow_html=True)
+    st.markdown(param_block("⚡  Công suất cơ học",   f"{power_kw:.2f} kW", power_pct,
+                             power_color, power_status), unsafe_allow_html=True)
+    st.markdown(param_block("🔧  Mô-men xoắn",        f"{torque_nm:.1f} Nm", torq_pct,
+                             torq_color, torq_status), unsafe_allow_html=True)
+
+with right_col:
+    st.markdown(param_block("🪛  Độ hao mòn dao",      f"{tool_wear} phút", wear_pct,
+                             wear_color, wear_status, "Ngưỡng thay dao: 200–240 phút"), unsafe_allow_html=True)
+    st.markdown(param_block("🔄  Tốc độ trục chính",   f"{speed_rpm:,} rpm", speed_pct,
+                             speed_color, speed_status, "Định mức: 1 400–1 800 rpm"), unsafe_allow_html=True)
+
+
+# ── Feature Importance / Explainability (GĐ7) ──
+st.markdown('<div class="section-header">Phân tích đóng góp thông số vào dự báo (GĐ7 · Explainability)</div>', unsafe_allow_html=True)
+
+factors = [
+    ("Tool wear [min]",    tool_wear,    240,  "phút",  "Mòn dao gây ứng suất tích lũy"),
+    ("Torque [Nm]",        torque_nm,    77,   "Nm",    "Lực cắt cao → tăng nguy cơ gãy dao"),
+    ("Nhiệt độ quá trình", proc_temp-273.15, 52, "°C",  "Tản nhiệt kém → hư ổ trục, lớp phủ dao"),
+    ("Công suất",          power_kw,     12,   "kW",   "Vượt dải công suất định mức"),
+    ("ΔT nhiệt độ",        temp_diff,    30,   "K",    "Chênh lệch nhiệt giữa KT và QT"),
+]
+
+rows_html = ""
+for name, val, maxv, unit, desc in factors:
+    bar_w = int(min(100, max(0, val / maxv * 100)))
+    # risk contribution: simple normalized importance
+    contrib = bar_w
+    if contrib >= 70:
+        tag_cls = "feat-tag-red"; tag = "▲ Tăng nguy cơ"
+    elif contrib >= 40:
+        tag_cls = "feat-tag-yellow"; tag = "~ Cần theo dõi"
+    else:
+        tag_cls = "feat-tag-gray"; tag = "✓ Ổn định"
+
+    bar_color = "#ef4444" if contrib >= 70 else "#f59e0b" if contrib >= 40 else "#10b981"
+    rows_html += f"""
+<div class="feat-row">
+    <div style="flex:2;">
+        <div class="feat-val">{name}</div>
+        <div style="font-size:11px;color:#94a3b8;">{desc}</div>
+        <div class="pbar-wrap" style="margin:4px 0 0;">
+            <div style="width:{bar_w}%;height:100%;background:{bar_color};border-radius:9999px;"></div>
+        </div>
+    </div>
+    <div style="flex:0.8;text-align:right;padding-left:12px;">
+        <div class="feat-val">{val:.1f} {unit}</div>
+        <div class="{tag_cls}" style="margin-top:2px;">{tag}</div>
+    </div>
+</div>"""
+
+st.markdown(f'<div class="cnc-card">{rows_html}</div>', unsafe_allow_html=True)
+
+
+# ── Recommendation Engine (GĐ10) ────────────
+st.markdown('<div class="section-header">Khuyến nghị hành động (GĐ10 · Recommendation Engine)</div>', unsafe_allow_html=True)
+rec_body_html = rec_body.replace("\n", "<br>")
 st.markdown(f"""
-<div class="param-title">
-    <span>Tốc độ quay</span>
-    <span>{speed_rpm:,} rpm</span>
+<div class="{rec_cls}">
+    <div class="rec-title">{rec_icon} &nbsp; {rec_title}</div>
+    <div class="rec-body">{rec_body_html}</div>
+    <div class="rec-note">Dựa trên mô hình Random Forest (PR-AUC = 0.887, ngưỡng cắt tối ưu: 0.20).</div>
 </div>
-<div class="progress-track"><div class="progress-fill-{speed_color}" style="width: {speed_percent}%;"></div></div>
-<div class="param-desc">{speed_status} (Khoảng định mức trục chính: 1.400 - 1.800 rpm)</div>
 """, unsafe_allow_html=True)
 
-# Ghi chú chân trang
-st.markdown("---")
-st.caption(f"🤖 **Mô hình**: Random Forest Classifier | **Tập dữ liệu**: AI4I 2020 Predictive Maintenance | **Trạng thái mô hình**: {'Đã nạp file best_model.joblib' if model_package else 'Mô phỏng quy tắc suy luận tương thích chuẩn'}")
+# ── Footer ───────────────────────────────────
+st.markdown('<hr class="divider"/>', unsafe_allow_html=True)
+c1, c2, c3 = st.columns(3)
+c1.caption("🤖 Mô hình: Random Forest Classifier")
+c2.caption("📊 Dataset: AI4I 2020 Predictive Maintenance (10,000 records)")
+c3.caption(f"⚙️ {'Model thật đã nạp' if model_package else 'Chế độ mô phỏng vật lý'}")
